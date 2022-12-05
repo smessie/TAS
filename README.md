@@ -1,6 +1,6 @@
-# TAS
+# 👜 TAS
 
-This template should help get you started developing with Vue 3 in Vite.
+TAS - Your Todo App with Solid
 
 ## Recommended IDE Setup
 
