@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@inrupt/solid-client-authn-browser": "^1.12.3",
     "mdb-vue-ui-kit": "^3.1.1",
     "vue": "^3.2.45",
     "vue-router": "^4.1.6"
