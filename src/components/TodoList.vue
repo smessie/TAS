@@ -39,9 +39,7 @@
           />
         </MDBCardText>
 
-        <MDBBtn color="primary" @click="execute" id="execute-btn"
-          >Load
-        </MDBBtn>
+        <MDBBtn color="primary" @click="execute" id="execute-btn">Load</MDBBtn>
       </MDBCardBody>
     </MDBCard>
 
@@ -77,10 +75,27 @@
             action
             class="override-padding-left"
           >
-            <input class="form-check-input me-1" type="checkbox" value="" />
+            <input
+              class="form-check-input me-1"
+              type="checkbox"
+              :checked="todo.get('completedAt')"
+            />
             {{ todo.get("name").value }}
             <MDBRow style="margin-left: 1rem">
-              <MDBCol><small v-if="todo.get('createdAt')">Created: {{ $filters.formatDate(todo.get('createdAt').value) }}</small></MDBCol>
+              <MDBCol
+                ><small v-if="todo.get('createdAt')"
+                  >Created:
+                  {{ $filters.formatDate(todo.get("createdAt").value) }}</small
+                ></MDBCol
+              >
+              <MDBCol
+                ><small v-if="todo.get('completedAt')"
+                  >Completed:
+                  {{
+                    $filters.formatDate(todo.get("completedAt").value)
+                  }}</small
+                ></MDBCol
+              >
             </MDBRow>
           </MDBListGroupItem>
         </MDBListGroup>
@@ -191,10 +206,11 @@ export default {
       PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
       PREFIX schema: <http://schema.org/>
 
-      SELECT ?name ?createdAt WHERE {
+      SELECT ?name ?createdAt ?completedAt WHERE {
         ?todo a cal:Vtodo;
             schema:text ?name.
         OPTIONAL { ?todo cal:created ?createdAt }.
+        OPTIONAL { ?todo cal:completed ?completedAt }.
       }
       `;
       const bindings = await (
