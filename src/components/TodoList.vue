@@ -125,7 +125,8 @@ import {
   fetch,
   logout,
 } from "@inrupt/solid-client-authn-browser";
-import { QueryEngine } from "@comunica/query-sparql";
+import { QueryEngine } from "@comunica/query-sparql-solid";
+import { v4 as uuidv4 } from "uuid";
 
 export default {
   name: "TodoList",
@@ -160,11 +161,33 @@ export default {
     });
   },
   methods: {
-    addTodo(event) {
+    async addTodo(event) {
       event.preventDefault();
 
       if (this.newTodo) {
-        this.todos.push(this.newTodo);
+        // Add to-do to Solid document.
+        const uuid = uuidv4();
+        const date = new Date().toISOString();
+        const query = `
+        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+        PREFIX schema: <http://schema.org/>
+
+        INSERT DATA {
+          <#${uuid}> a cal:Vtodo ;
+            schema:text "${this.newTodo}" ;
+            cal:created "${date}" .
+        }`;
+
+        await this.engine.queryVoid(query, {
+          sources: [this.doc],
+          destination: { type: "patchSparqlUpdate", value: this.doc },
+          "@comunica/actor-http-inrupt-solid-client-authn:session":
+            getDefaultSession(),
+          baseIRI: this.doc,
+        });
+
+        // Add to-do to list in app.
+        this.todos.push({ name: this.newTodo, createdAt: date });
         this.newTodo = "";
       }
     },
@@ -196,7 +219,7 @@ export default {
         cors: "cors",
       }).then((response) => response.text());
 
-      // Use document content to parse to todo objects.
+      // Use document content to parse to to-do objects.
       this.todos = await this.parseTodoDoc(n3doc);
     },
     async parseTodoDoc(doc) {
