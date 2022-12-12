@@ -79,6 +79,9 @@
           >
             <input class="form-check-input me-1" type="checkbox" value="" />
             {{ todo.get("name").value }}
+            <MDBRow style="margin-left: 1rem">
+              <MDBCol><small v-if="todo.get('createdAt')">Created: {{ $filters.formatDate(todo.get('createdAt').value) }}</small></MDBCol>
+            </MDBRow>
           </MDBListGroupItem>
         </MDBListGroup>
       </MDBCardBody>
@@ -97,6 +100,8 @@ import {
   MDBCardBody,
   MDBCardText,
   MDBCardTitle,
+  MDBRow,
+  MDBCol,
 } from "mdb-vue-ui-kit";
 import {
   getDefaultSession,
@@ -119,6 +124,8 @@ export default {
     MDBCardBody,
     MDBCardTitle,
     MDBCardText,
+    MDBRow,
+    MDBCol,
   },
   data() {
     return {
