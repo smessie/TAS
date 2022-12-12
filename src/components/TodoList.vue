@@ -220,6 +220,7 @@ export default {
       }).then((response) => response.text());
 
       // Use document content to parse to to-do objects.
+      this.todos = [];
       this.todos = await this.parseTodoDoc(n3doc);
     },
     async parseTodoDoc(doc) {
