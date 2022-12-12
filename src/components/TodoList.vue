@@ -9,7 +9,7 @@
           <div v-if="loggedIn">
             <p class="text-success">
               You are logged in as <em>{{ loggedIn }}</em
-            >.
+              >.
             </p>
             <MDBBtn color="primary" @click="logout">Logout</MDBBtn>
           </div>
@@ -27,40 +27,62 @@
       </MDBCardBody>
     </MDBCard>
 
-    <form @submit="addTodo">
-      <MDBInput
-        inputGroup
-        :formOutline="false"
-        wrapperClass="mb-3"
-        v-model="newTodo"
-        placeholder="Write your new todo here"
-        aria-label="Write your new todo here"
-        aria-describedby="button-add"
-        style="margin-left: 3rem"
-      >
-        <MDBBtn
-          outline="primary"
-          id="button-add"
-          :ripple="{ color: 'dark' }"
-          @click="addTodo"
-        >
-          Add
-        </MDBBtn>
-      </MDBInput>
-    </form>
+    <MDBCard>
+      <MDBCardBody class="w-100">
+        <MDBCardTitle>Document</MDBCardTitle>
+        <MDBCardText>
+          <MDBInput
+            label="Dataset URL"
+            type="url"
+            v-model="doc"
+            style="margin-bottom: 1rem"
+          />
+        </MDBCardText>
 
-    <MDBListGroup light>
-      <MDBListGroupItem
-        v-for="(todo, index) in todos"
-        :key="index"
-        tag="label"
-        action
-        class="override-padding-left"
-      >
-        <input class="form-check-input me-1" type="checkbox" value="" />
-        {{ todo }}
-      </MDBListGroupItem>
-    </MDBListGroup>
+        <MDBBtn color="primary" @click="execute" id="execute-btn"
+          >Load
+        </MDBBtn>
+      </MDBCardBody>
+    </MDBCard>
+
+    <MDBCard>
+      <MDBCardBody class="w-100">
+        <form @submit="addTodo">
+          <MDBInput
+            inputGroup
+            :formOutline="false"
+            wrapperClass="mb-3"
+            v-model="newTodo"
+            placeholder="Write your new todo here"
+            aria-label="Write your new todo here"
+            aria-describedby="button-add"
+            style="margin-left: 3rem"
+          >
+            <MDBBtn
+              outline="primary"
+              id="button-add"
+              :ripple="{ color: 'dark' }"
+              @click="addTodo"
+            >
+              Add
+            </MDBBtn>
+          </MDBInput>
+        </form>
+
+        <MDBListGroup light>
+          <MDBListGroupItem
+            v-for="(todo, index) in todos"
+            :key="index"
+            tag="label"
+            action
+            class="override-padding-left"
+          >
+            <input class="form-check-input me-1" type="checkbox" value="" />
+            {{ todo.get("name").value }}
+          </MDBListGroupItem>
+        </MDBListGroup>
+      </MDBCardBody>
+    </MDBCard>
   </MDBContainer>
 </template>
 
@@ -83,6 +105,7 @@ import {
   fetch,
   logout,
 } from "@inrupt/solid-client-authn-browser";
+import { QueryEngine } from "@comunica/query-sparql";
 
 export default {
   name: "TodoList",
@@ -103,17 +126,11 @@ export default {
       todos: [],
       loggedIn: undefined,
       oidcIssuer: "",
+      doc: "",
+      engine: new QueryEngine(),
     };
   },
   created() {
-    this.todos = [
-      "Cras justo odio",
-      "Dapibus ac facilisis in",
-      "Morbi leo risus",
-      "Porta ac consectetur ac",
-      "Vestibulum at eros",
-    ];
-
     handleIncomingRedirect({
       restorePreviousSession: true,
     }).then((info) => {
@@ -149,6 +166,46 @@ export default {
     async logout() {
       await logout();
       this.loggedIn = undefined;
+    },
+    async execute(event) {
+      event.preventDefault();
+
+      const n3doc = await fetch(this.doc, {
+        cors: "cors",
+      }).then((response) => response.text());
+
+      // Use document content to parse to todo objects.
+      this.todos = await this.parseTodoDoc(n3doc);
+    },
+    async parseTodoDoc(doc) {
+      console.log(doc);
+
+      const query = `
+      PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+      PREFIX schema: <http://schema.org/>
+
+      SELECT ?name ?createdAt WHERE {
+        ?todo a cal:Vtodo;
+            schema:text ?name.
+        OPTIONAL { ?todo cal:created ?createdAt }.
+      }
+      `;
+      const bindings = await (
+        await this.engine.queryBindings(query, {
+          sources: [
+            {
+              type: "stringSource",
+              value: doc,
+              mediaType: "text/n3",
+              baseIRI: this.doc,
+            },
+          ],
+        })
+      ).toArray();
+
+      console.log(bindings);
+
+      return bindings;
     },
   },
 };
