@@ -78,22 +78,19 @@
             <input
               class="form-check-input me-1"
               type="checkbox"
-              :checked="todo.get('completedAt')"
+              :checked="todo.completedAt"
+              @change="toggleCompleted(todo)"
             />
-            {{ todo.get("name").value }}
+            {{ todo.name }}
             <MDBRow style="margin-left: 1rem">
               <MDBCol
-                ><small v-if="todo.get('createdAt')"
-                  >Created:
-                  {{ $filters.formatDate(todo.get("createdAt").value) }}</small
+                ><small v-if="todo.createdAt"
+                  >Created: {{ $filters.formatDate(todo.createdAt) }}</small
                 ></MDBCol
               >
               <MDBCol
-                ><small v-if="todo.get('completedAt')"
-                  >Completed:
-                  {{
-                    $filters.formatDate(todo.get("completedAt").value)
-                  }}</small
+                ><small v-if="todo.completedAt"
+                  >Completed: {{ $filters.formatDate(todo.completedAt) }}</small
                 ></MDBCol
               >
             </MDBRow>
@@ -187,7 +184,11 @@ export default {
         });
 
         // Add to-do to list in app.
-        this.todos.push({ name: this.newTodo, createdAt: date });
+        this.todos.push({
+          name: this.newTodo,
+          createdAt: date,
+          uri: `${this.doc}#${uuid}`,
+        });
         this.newTodo = "";
       }
     },
@@ -230,11 +231,11 @@ export default {
       PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
       PREFIX schema: <http://schema.org/>
 
-      SELECT ?name ?createdAt ?completedAt WHERE {
-        ?todo a cal:Vtodo;
+      SELECT ?uri ?name ?createdAt ?completedAt WHERE {
+        ?uri a cal:Vtodo;
             schema:text ?name.
-        OPTIONAL { ?todo cal:created ?createdAt }.
-        OPTIONAL { ?todo cal:completed ?completedAt }.
+        OPTIONAL { ?uri cal:created ?createdAt }.
+        OPTIONAL { ?uri cal:completed ?completedAt }.
       }
       `;
       const bindings = await (
@@ -252,7 +253,55 @@ export default {
 
       console.log(bindings);
 
-      return bindings;
+      // Map to normal objects.
+      return bindings.map((binding) => {
+        return {
+          uri: binding.get("uri").value,
+          name: binding.get("name").value,
+          createdAt: binding.get("createdAt")?.value,
+          completedAt: binding.get("completedAt")?.value,
+        };
+      });
+    },
+    async toggleCompleted(todo) {
+      if (todo.completedAt) {
+        // Mark as not completed.
+        const query = `
+        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+
+        DELETE DATA {
+          <${todo.uri}> cal:completed "${todo.completedAt}" .
+        }`;
+
+        await this.engine.queryVoid(query, {
+          sources: [this.doc],
+          destination: { type: "patchSparqlUpdate", value: this.doc },
+          "@comunica/actor-http-inrupt-solid-client-authn:session":
+            getDefaultSession(),
+          baseIRI: this.doc,
+        });
+
+        todo.completedAt = undefined;
+      } else {
+        // Mark as completed.
+        const date = new Date().toISOString();
+        const query = `
+        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+
+        INSERT DATA {
+          <${todo.uri}> cal:completed "${date}" .
+        }`;
+
+        await this.engine.queryVoid(query, {
+          sources: [this.doc],
+          destination: { type: "patchSparqlUpdate", value: this.doc },
+          "@comunica/actor-http-inrupt-solid-client-authn:session":
+            getDefaultSession(),
+          baseIRI: this.doc,
+        });
+
+        todo.completedAt = date;
+      }
     },
   },
 };
