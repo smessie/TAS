@@ -14,13 +14,7 @@
             <MDBBtn color="primary" @click="logout">Logout</MDBBtn>
           </div>
           <div v-else>
-            <MDBInput
-              v-model="oidcIssuer"
-              label="OIDC Issuer"
-              type="text"
-              required
-              style="margin-bottom: 1rem"
-            />
+            <MDBInput v-model="oidcIssuer" label="OIDC Issuer" type="text" required style="margin-bottom: 1rem" />
             <MDBBtn color="primary" @click="login">Login</MDBBtn>
           </div>
         </MDBCardText>
@@ -31,12 +25,7 @@
       <MDBCardBody class="w-100">
         <MDBCardTitle>Document</MDBCardTitle>
         <MDBCardText>
-          <MDBInput
-            label="Dataset URL"
-            type="url"
-            v-model="doc"
-            style="margin-bottom: 1rem"
-          />
+          <MDBInput label="Dataset URL" type="url" v-model="doc" style="margin-bottom: 1rem" />
           <MDBInput label="N3 Rules URL" type="url" v-model="rules" />
           <small style="margin-bottom: 1rem">Leave this URL empty to not apply any schema alignment tasks.</small>
         </MDBCardText>
@@ -58,14 +47,7 @@
             aria-describedby="button-add"
             style="margin-left: 3rem"
           >
-            <MDBBtn
-              outline="primary"
-              id="button-add"
-              :ripple="{ color: 'dark' }"
-              @click="addTodo"
-            >
-              Add
-            </MDBBtn>
+            <MDBBtn outline="primary" id="button-add" :ripple="{ color: 'dark' }" @click="addTodo"> Add </MDBBtn>
           </MDBInput>
         </form>
 
@@ -86,14 +68,10 @@
             {{ todo.name }}
             <MDBRow style="margin-left: 1rem">
               <MDBCol
-                ><small v-if="todo.createdAt"
-                  >Created: {{ $filters.formatDate(todo.createdAt) }}</small
-                ></MDBCol
+                ><small v-if="todo.createdAt">Created: {{ $filters.formatDate(todo.createdAt) }}</small></MDBCol
               >
               <MDBCol
-                ><small v-if="todo.completedAt"
-                  >Completed: {{ $filters.formatDate(todo.completedAt) }}</small
-                ></MDBCol
+                ><small v-if="todo.completedAt">Completed: {{ $filters.formatDate(todo.completedAt) }}</small></MDBCol
               >
             </MDBRow>
           </MDBListGroupItem>
@@ -117,16 +95,10 @@ import {
   MDBRow,
   MDBCol,
 } from "mdb-vue-ui-kit";
-import {
-  getDefaultSession,
-  handleIncomingRedirect,
-  login,
-  fetch,
-  logout,
-} from "@inrupt/solid-client-authn-browser";
+import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from "@inrupt/solid-client-authn-browser";
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import { v4 as uuidv4 } from "uuid";
-import {n3reasoner} from "eye-mock";
+import { n3reasoner } from "eye-mock";
 
 export default {
   name: "TodoList",
@@ -182,8 +154,7 @@ export default {
         await this.engine.queryVoid(query, {
           sources: [this.doc],
           destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session":
-            getDefaultSession(),
+          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
           baseIRI: this.doc,
         });
 
@@ -293,8 +264,7 @@ export default {
         await this.engine.queryVoid(query, {
           sources: [this.doc],
           destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session":
-            getDefaultSession(),
+          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
           baseIRI: this.doc,
         });
 
@@ -312,8 +282,7 @@ export default {
         await this.engine.queryVoid(query, {
           sources: [this.doc],
           destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session":
-            getDefaultSession(),
+          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
           baseIRI: this.doc,
         });
 
