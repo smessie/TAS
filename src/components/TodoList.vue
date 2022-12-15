@@ -26,7 +26,7 @@
         <MDBCardTitle>Document</MDBCardTitle>
         <MDBCardText>
           <MDBInput label="Dataset URL" type="url" v-model="doc" style="margin-bottom: 1rem" />
-          <MDBInput label="N3 Rules URL" type="url" v-model="rules" />
+          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" />
           <small style="margin-bottom: 1rem">Leave this URL empty to not apply any schema alignment tasks.</small>
         </MDBCardText>
 
