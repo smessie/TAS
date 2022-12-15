@@ -37,6 +37,8 @@
             v-model="doc"
             style="margin-bottom: 1rem"
           />
+          <MDBInput label="N3 Rules URL" type="url" v-model="rules" />
+          <small style="margin-bottom: 1rem">Leave this URL empty to not apply any schema alignment tasks.</small>
         </MDBCardText>
 
         <MDBBtn color="primary" @click="execute" id="execute-btn">Load</MDBBtn>
@@ -124,6 +126,7 @@ import {
 } from "@inrupt/solid-client-authn-browser";
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import { v4 as uuidv4 } from "uuid";
+import {n3reasoner} from "eye-mock";
 
 export default {
   name: "TodoList",
@@ -148,6 +151,7 @@ export default {
       oidcIssuer: "",
       doc: "",
       engine: new QueryEngine(),
+      rules: "",
     };
   },
   created() {
@@ -216,9 +220,18 @@ export default {
     async execute(event) {
       event.preventDefault();
 
-      const n3doc = await fetch(this.doc, {
+      let n3doc = await fetch(this.doc, {
         cors: "cors",
       }).then((response) => response.text());
+
+      if (this.rules) {
+        // Apply schema alignment tasks.
+        const n3rules = await fetch(this.rules, {
+          cors: "cors",
+        }).then((response) => response.text());
+
+        n3doc = await n3reasoner(n3doc, n3rules, true);
+      }
 
       // Use document content to parse to to-do objects.
       this.todos = [];
@@ -264,6 +277,10 @@ export default {
       });
     },
     async toggleCompleted(todo) {
+      if (this.rules) {
+        console.warn("TODO: Not implemented yet for schema alignment tasks.");
+        return;
+      }
       if (todo.completedAt) {
         // Mark as not completed.
         const query = `
