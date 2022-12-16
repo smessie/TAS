@@ -34,7 +34,9 @@
       </MDBCardBody>
     </MDBCard>
 
-    <MDBCard>
+    <MDBSwitch v-model="rawView" label="Raw view" labelColor="primary"></MDBSwitch>
+
+    <MDBCard v-if="!rawView">
       <MDBCardBody class="w-100">
         <form @submit="addTodo">
           <MDBInput
@@ -78,6 +80,14 @@
         </MDBListGroup>
       </MDBCardBody>
     </MDBCard>
+
+    <MDBCard v-if="rawView">
+      <MDBCardBody class="w-100">
+        <pre>{{ rawOriginal }}</pre>
+        <hr />
+        <pre>{{ rawAligned }}</pre>
+      </MDBCardBody>
+    </MDBCard>
   </MDBContainer>
 </template>
 
@@ -94,6 +104,7 @@ import {
   MDBCardTitle,
   MDBRow,
   MDBCol,
+  MDBSwitch,
 } from "mdb-vue-ui-kit";
 import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from "@inrupt/solid-client-authn-browser";
 import { QueryEngine } from "@comunica/query-sparql-solid";
@@ -114,6 +125,7 @@ export default {
     MDBCardText,
     MDBRow,
     MDBCol,
+    MDBSwitch,
   },
   data() {
     return {
@@ -124,6 +136,9 @@ export default {
       doc: "",
       engine: new QueryEngine(),
       rules: "",
+      rawView: false,
+      rawOriginal: "",
+      rawAligned: "",
     };
   },
   created() {
@@ -195,6 +210,8 @@ export default {
         cors: "cors",
       }).then((response) => response.text());
 
+      this.rawOriginal = n3doc;
+
       if (this.rules) {
         // Apply schema alignment tasks.
         const n3rules = await fetch(this.rules, {
@@ -203,6 +220,8 @@ export default {
 
         n3doc = await n3reasoner(n3doc, n3rules, true);
       }
+
+      this.rawAligned = n3doc;
 
       // Use document content to parse to to-do objects.
       this.todos = [];
