@@ -23,7 +23,7 @@
 
     <MDBCard>
       <MDBCardBody class="w-100">
-        <MDBCardTitle>Document</MDBCardTitle>
+        <MDBCardTitle>Input</MDBCardTitle>
         <MDBCardText>
           <MDBInput label="Dataset URL" type="url" v-model="doc" style="margin-bottom: 1rem" />
           <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" />
@@ -34,10 +34,22 @@
       </MDBCardBody>
     </MDBCard>
 
+    <MDBCard v-if="rules">
+      <MDBCardBody class="w-100">
+        <MDBCardTitle>Output</MDBCardTitle>
+        <MDBCardText>
+          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="invertedRulesUrl" @change="loadInvertedRules" />
+          <small style="margin-bottom: 1rem">Rules to convert changes back to the original ontology.</small>
+        </MDBCardText>
+      </MDBCardBody>
+    </MDBCard>
+
     <MDBSwitch v-model="rawView" label="Raw view" labelColor="primary"></MDBSwitch>
 
     <MDBCard v-if="!rawView">
       <MDBCardBody class="w-100">
+        <p class="text-danger" v-if="error">{{ error }}</p>
+
         <form @submit="addTodo">
           <MDBInput
             inputGroup
@@ -65,7 +77,7 @@
               class="form-check-input me-1"
               type="checkbox"
               :checked="todo.completedAt"
-              @change="toggleCompleted(todo)"
+              @change="toggleCompleted($event, todo)"
             />
             {{ todo.name }}
             <MDBRow style="margin-left: 1rem">
@@ -136,9 +148,12 @@ export default {
       doc: "",
       engine: new QueryEngine(),
       rules: "",
+      invertedRulesUrl: "",
+      invertedRules: "",
       rawView: false,
       rawOriginal: "",
       rawAligned: "",
+      error: "",
     };
   },
   created() {
@@ -156,14 +171,32 @@ export default {
         // Add to-do to Solid document.
         const uuid = uuidv4();
         const date = new Date().toISOString();
-        const query = `
-        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
-        PREFIX schema: <http://schema.org/>
 
-        INSERT DATA {
-          <#${uuid}> a cal:Vtodo ;
+        let prefixes = `
+        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+        PREFIX schema: <http://schema.org/>`;
+        let triples = `
+        <#${uuid}> a cal:Vtodo ;
             schema:text "${this.newTodo}" ;
-            cal:created "${date}" .
+            cal:created "${date}" .`;
+
+        if (this.rules) {
+          if (!this.invertedRules) {
+            this.error = "You need to specify the inverted rules file before you can create a todo.";
+            return;
+          }
+
+          // Apply schema alignment tasks.
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const splitResult = this.splitReasoningResult(reasonerResult);
+          prefixes = splitResult.prefixes;
+          triples = splitResult.triples;
+        }
+
+        const query = `
+        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
+        INSERT DATA {
+          ${triples}
         }`;
 
         await this.engine.queryVoid(query, {
@@ -266,18 +299,30 @@ export default {
         };
       });
     },
-    async toggleCompleted(todo) {
-      if (this.rules) {
-        console.warn("TODO: Not implemented yet for schema alignment tasks.");
-        return;
-      }
+    async toggleCompleted(event, todo) {
       if (todo.completedAt) {
         // Mark as not completed.
-        const query = `
-        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
+        let prefixes = "PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>";
+        let triples = `<${todo.uri}> cal:completed "${todo.completedAt}" .`;
 
+        if (this.rules) {
+          if (!this.invertedRules) {
+            this.error = "You need to specify the inverted rules file before you can toggle a todo.";
+            event.target.checked = true;
+            return;
+          }
+
+          // Apply schema alignment tasks.
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const splitResult = this.splitReasoningResult(reasonerResult);
+          prefixes = splitResult.prefixes;
+          triples = splitResult.triples;
+        }
+
+        const query = `
+        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
         DELETE DATA {
-          <${todo.uri}> cal:completed "${todo.completedAt}" .
+          ${triples}
         }`;
 
         await this.engine.queryVoid(query, {
@@ -291,11 +336,28 @@ export default {
       } else {
         // Mark as completed.
         const date = new Date().toISOString();
-        const query = `
-        PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
 
+        let prefixes = "PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>";
+        let triples = `<${todo.uri}> cal:completed "${date}" .`;
+
+        if (this.rules) {
+          if (!this.invertedRules) {
+            this.error = "You need to specify the inverted rules file before you can toggle a todo.";
+            event.target.checked = false;
+            return;
+          }
+
+          // Apply schema alignment tasks.
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const splitResult = this.splitReasoningResult(reasonerResult);
+          prefixes = splitResult.prefixes;
+          triples = splitResult.triples;
+        }
+
+        const query = `
+        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
         INSERT DATA {
-          <${todo.uri}> cal:completed "${date}" .
+          ${triples}
         }`;
 
         await this.engine.queryVoid(query, {
@@ -307,6 +369,25 @@ export default {
 
         todo.completedAt = date;
       }
+    },
+    splitReasoningResult(result) {
+      return {
+        prefixes: result
+          .split("\n")
+          .filter((line) => line.startsWith("@prefix"))
+          .join("\n"),
+        triples: result
+          .split("\n")
+          .filter((line) => !line.startsWith("@prefix"))
+          .join("\n"),
+      };
+    },
+    async loadInvertedRules() {
+      this.invertedRules = await fetch(this.invertedRulesUrl, {
+        cors: "cors",
+      }).then((response) => response.text());
+
+      this.error = "";
     },
   },
 };
