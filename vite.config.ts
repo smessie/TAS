@@ -25,7 +25,7 @@ export default defineConfig({
   },
   define: {
     // https://github.com/permafrost-dev/vue-ray/issues/3#issuecomment-1055944939
-    global: {},
-    process: {},
+    global: "window",
+    "process.env": {},
   },
 });
