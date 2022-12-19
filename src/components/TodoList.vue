@@ -76,16 +76,16 @@
             <input
               class="form-check-input me-1"
               type="checkbox"
-              :checked="todo.completedAt"
+              :checked="todo.completedAt !== undefined"
               @change="toggleCompleted($event, todo)"
             />
             {{ todo.name }}
             <MDBRow style="margin-left: 1rem">
               <MDBCol
-                ><small v-if="todo.createdAt">Created: {{ $filters.formatDate(todo.createdAt) }}</small></MDBCol
+                ><small v-if="todo.createdAt">Created: {{ formatDate(todo.createdAt) }}</small></MDBCol
               >
               <MDBCol
-                ><small v-if="todo.completedAt">Completed: {{ $filters.formatDate(todo.completedAt) }}</small></MDBCol
+                ><small v-if="todo.completedAt">Completed: {{ formatDate(todo.completedAt) }}</small></MDBCol
               >
             </MDBRow>
           </MDBListGroupItem>
@@ -103,7 +103,7 @@
   </MDBContainer>
 </template>
 
-<script>
+<script lang="ts">
 import {
   MDBContainer,
   MDBListGroup,
@@ -122,8 +122,33 @@ import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from 
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import { v4 as uuidv4 } from "uuid";
 import { n3reasoner } from "eye-mock";
+import { defineComponent } from "vue";
+import moment from "moment/moment";
 
-export default {
+type Todo = {
+  name: string | undefined;
+  createdAt: string | undefined;
+  completedAt: string | undefined;
+  uri: string | undefined;
+};
+
+type MyData = {
+  newTodo: string;
+  todos: Todo[];
+  loggedIn: string | undefined;
+  oidcIssuer: string;
+  doc: string;
+  engine: QueryEngine;
+  rules: string;
+  invertedRulesUrl: string;
+  invertedRules: string;
+  rawView: boolean;
+  rawOriginal: string;
+  rawAligned: string;
+  error: string;
+};
+
+export default defineComponent({
   name: "TodoList",
   components: {
     MDBContainer,
@@ -154,17 +179,17 @@ export default {
       rawOriginal: "",
       rawAligned: "",
       error: "",
-    };
+    } as MyData;
   },
   created() {
     handleIncomingRedirect({
       restorePreviousSession: true,
     }).then((info) => {
-      this.loggedIn = info.webId;
+      this.loggedIn = info?.webId;
     });
   },
   methods: {
-    async addTodo(event) {
+    async addTodo(event: any) {
       event.preventDefault();
 
       if (this.newTodo) {
@@ -211,6 +236,7 @@ export default {
           name: this.newTodo,
           createdAt: date,
           uri: `${this.doc}#${uuid}`,
+          completedAt: undefined,
         });
         this.newTodo = "";
       }
@@ -236,11 +262,11 @@ export default {
       await logout();
       this.loggedIn = undefined;
     },
-    async execute(event) {
+    async execute(event: any) {
       event.preventDefault();
 
       let n3doc = await fetch(this.doc, {
-        cors: "cors",
+        mode: "cors",
       }).then((response) => response.text());
 
       this.rawOriginal = n3doc;
@@ -248,7 +274,7 @@ export default {
       if (this.rules) {
         // Apply schema alignment tasks.
         const n3rules = await fetch(this.rules, {
-          cors: "cors",
+          mode: "cors",
         }).then((response) => response.text());
 
         n3doc = await n3reasoner(n3doc, n3rules, true);
@@ -260,7 +286,7 @@ export default {
       this.todos = [];
       this.todos = await this.parseTodoDoc(n3doc);
     },
-    async parseTodoDoc(doc) {
+    async parseTodoDoc(doc: string): Promise<Todo[]> {
       console.log(doc);
 
       const query = `
@@ -292,14 +318,14 @@ export default {
       // Map to normal objects.
       return bindings.map((binding) => {
         return {
-          uri: binding.get("uri").value,
-          name: binding.get("name").value,
+          uri: binding.get("uri")?.value,
+          name: binding.get("name")?.value,
           createdAt: binding.get("createdAt")?.value,
           completedAt: binding.get("completedAt")?.value,
         };
       });
     },
-    async toggleCompleted(event, todo) {
+    async toggleCompleted(event: any, todo: Todo) {
       if (todo.completedAt) {
         // Mark as not completed.
         let prefixes = "PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>";
@@ -370,7 +396,7 @@ export default {
         todo.completedAt = date;
       }
     },
-    splitReasoningResult(result) {
+    splitReasoningResult(result: string): { prefixes: string; triples: string } {
       return {
         prefixes: result
           .split("\n")
@@ -384,13 +410,16 @@ export default {
     },
     async loadInvertedRules() {
       this.invertedRules = await fetch(this.invertedRulesUrl, {
-        cors: "cors",
+        mode: "cors",
       }).then((response) => response.text());
 
       this.error = "";
     },
+    formatDate(value: string): string {
+      return moment(String(value)).format("MM/DD/YYYY HH:mm");
+    },
   },
-};
+});
 </script>
 
 <style scoped>
