@@ -22,6 +22,9 @@ export default defineConfig({
   },
   build: {
     target: ["es2020", "safari14"],
+    commonjsOptions: {
+      strictRequires: true,
+    },
   },
   define: {
     // https://github.com/permafrost-dev/vue-ray/issues/3#issuecomment-1055944939
