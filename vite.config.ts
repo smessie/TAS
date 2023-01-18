@@ -14,6 +14,11 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  build: {
+    commonjsOptions: {
+      strictRequires: true,
+    },
+  },
   define: {
     // https://github.com/permafrost-dev/vue-ray/issues/3#issuecomment-1055944939
     global: "window",
