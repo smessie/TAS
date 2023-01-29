@@ -122,7 +122,7 @@ import {
 import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from "@inrupt/solid-client-authn-browser";
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import { v4 as uuidv4 } from "uuid";
-import { n3reasoner } from "eye-mock";
+import { n3reasoner } from "@smessie/eye-js";
 
 export default {
   name: "TodoList",
@@ -189,7 +189,8 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const options = { output: "derivations", blogic: false };
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
           triples = splitResult.triples;
