@@ -15,7 +15,7 @@
           </div>
           <div v-else>
             <MDBInput v-model="oidcIssuer" label="OIDC Issuer" type="text" required />
-            <small class="text-danger" v-if="authError">{{ authError }}<br></small>
+            <small class="text-danger" v-if="authError">{{ authError }}<br /></small>
             <MDBBtn color="primary" @click="login" style="margin-top: 1rem">Login</MDBBtn>
           </div>
         </MDBCardText>
@@ -26,9 +26,11 @@
       <MDBCardBody class="w-100">
         <MDBCardTitle>Input</MDBCardTitle>
         <MDBCardText>
-          <MDBInput label="Dataset URL" type="url" v-model="doc" style="margin-bottom: 1rem" />
-          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" />
+          <MDBInput label="Dataset URL" type="url" v-model="doc" />
+          <small class="text-danger" v-if="docError">{{ docError }}</small>
+          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" style="margin-top: 1rem;" />
           <small style="margin-bottom: 1rem">Leave this URL empty to not apply any schema alignment tasks.</small>
+          <small class="text-danger" v-if="rulesError">{{ rulesError }}</small>
         </MDBCardText>
 
         <MDBBtn color="primary" @click="execute" id="execute-btn">Load</MDBBtn>
@@ -156,6 +158,8 @@ export default {
       rawAligned: "",
       error: "",
       authError: "",
+      docError: "",
+      rulesError: "",
     };
   },
   created() {
@@ -244,6 +248,14 @@ export default {
     async execute(event) {
       event.preventDefault();
 
+      // Check if valid URL
+      try {
+        new URL(this.doc);
+      } catch (e) {
+        this.docError = "Please enter a valid URL.";
+        return;
+      }
+
       let n3doc = await fetch(this.doc, {
         cors: "cors",
       }).then((response) => response.text());
@@ -251,6 +263,14 @@ export default {
       this.rawOriginal = n3doc;
 
       if (this.rules) {
+        // Check if valid URL
+        try {
+          new URL(this.rules);
+        } catch (e) {
+          this.rulesError = "Please enter a valid URL.";
+          return;
+        }
+
         // Apply schema alignment tasks.
         const n3rules = await fetch(this.rules, {
           cors: "cors",
