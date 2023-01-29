@@ -14,8 +14,9 @@
             <MDBBtn color="primary" @click="logout">Logout</MDBBtn>
           </div>
           <div v-else>
-            <MDBInput v-model="oidcIssuer" label="OIDC Issuer" type="text" required style="margin-bottom: 1rem" />
-            <MDBBtn color="primary" @click="login">Login</MDBBtn>
+            <MDBInput v-model="oidcIssuer" label="OIDC Issuer" type="text" required />
+            <small class="text-danger" v-if="authError">{{ authError }}<br></small>
+            <MDBBtn color="primary" @click="login" style="margin-top: 1rem">Login</MDBBtn>
           </div>
         </MDBCardText>
       </MDBCardBody>
@@ -154,6 +155,7 @@ export default {
       rawOriginal: "",
       rawAligned: "",
       error: "",
+      authError: "",
     };
   },
   created() {
@@ -229,6 +231,8 @@ export default {
           redirectUrl: window.location.href,
           // Provide a name for the application when sending to the Solid Identity Provider
           clientName: "TAS",
+        }).catch((e) => {
+          this.authError = e.message;
         });
       }
     },
