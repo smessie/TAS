@@ -64,7 +64,15 @@
             aria-describedby="button-add"
             style="margin-left: 3rem"
           >
-            <MDBBtn outline="primary" id="button-add" :ripple="{ color: 'dark' }" @click="addTodo"> Add </MDBBtn>
+            <MDBBtn
+              outline="primary"
+              id="button-add"
+              :ripple="{ color: 'dark' }"
+              @click="addTodo"
+              :disabled="!newTodo || todos === undefined"
+            >
+              Add
+            </MDBBtn>
           </MDBInput>
         </form>
 
@@ -145,7 +153,7 @@ export default {
   data() {
     return {
       newTodo: "",
-      todos: [],
+      todos: undefined,
       loggedIn: undefined,
       oidcIssuer: "",
       doc: "",
