@@ -190,7 +190,7 @@ export default {
         PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>
         PREFIX schema: <http://schema.org/>`;
         let triples = `
-        <#${uuid}> a cal:Vtodo ;
+        <${this.doc}#${uuid}> a cal:Vtodo ;
             schema:text "${this.newTodo}" ;
             cal:created "${date}" .`;
 
@@ -284,6 +284,11 @@ export default {
           cors: "cors",
         }).then((response) => response.text());
 
+        // Add base to doc if not yet. Fixing relative IRIs.
+        if (!n3doc.includes("@base") && !n3doc.includes("BASE")) {
+          n3doc = `@base <${this.doc}> .\n${n3doc}`;
+        }
+
         n3doc = await n3reasoner(n3doc, n3rules, true);
       }
 
@@ -335,7 +340,7 @@ export default {
     async toggleCompleted(event, todo) {
       if (todo.completedAt) {
         // Mark as not completed.
-        let prefixes = "PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>";
+        let prefixes = `@base <${this.doc}> .\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>`;
         let triples = `<${todo.uri}> cal:completed "${todo.completedAt}" .`;
 
         if (this.rules) {
@@ -370,7 +375,7 @@ export default {
         // Mark as completed.
         const date = new Date().toISOString();
 
-        let prefixes = "PREFIX cal: <http://www.w3.org/2002/12/cal/ical#>";
+        let prefixes = `@base <${this.doc}> .\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>`;
         let triples = `<${todo.uri}> cal:completed "${date}" .`;
 
         if (this.rules) {
@@ -407,11 +412,11 @@ export default {
       return {
         prefixes: result
           .split("\n")
-          .filter((line) => line.startsWith("@prefix"))
+          .filter((line) => line.startsWith("@prefix") || line.startsWith("@base") || line.startsWith("BASE"))
           .join("\n"),
         triples: result
           .split("\n")
-          .filter((line) => !line.startsWith("@prefix"))
+          .filter((line) => !line.startsWith("@prefix") || line.startsWith("@base") || line.startsWith("BASE"))
           .join("\n"),
       };
     },
