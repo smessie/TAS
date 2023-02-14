@@ -132,7 +132,7 @@ import {
 import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from "@inrupt/solid-client-authn-browser";
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import { v4 as uuidv4 } from "uuid";
-import { n3reasoner } from "@smessie/eye-js";
+import { n3reasoner } from "eyereasoner";
 
 export default {
   name: "TodoList",
@@ -201,7 +201,7 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const options = { output: "derivations", blogic: false };
+          const options = { output: "derivations", blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
@@ -289,7 +289,8 @@ export default {
           n3doc = `@base <${this.doc}> .\n${n3doc}`;
         }
 
-        n3doc = await n3reasoner(n3doc, n3rules, true);
+        const options = { output: "derivations", blogic: false, outputType: "string" };
+        n3doc = await n3reasoner(n3doc, n3rules, options);
       }
 
       this.rawAligned = n3doc;
@@ -351,7 +352,8 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const options = { output: "derivations", blogic: false, outputType: "string" };
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
           triples = splitResult.triples;
@@ -386,7 +388,8 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, true);
+          const options = { output: "derivations", blogic: false, outputType: "string" };
+          const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
           triples = splitResult.triples;
