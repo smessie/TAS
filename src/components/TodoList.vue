@@ -201,7 +201,7 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const options = { output: "derivations", blogic: false, outputType: "string" };
+          const options = { blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
@@ -289,7 +289,7 @@ export default {
           n3doc = `@base <${this.doc}> .\n${n3doc}`;
         }
 
-        const options = { output: "derivations", blogic: false, outputType: "string" };
+        const options = { blogic: false, outputType: "string" };
         n3doc = await n3reasoner(n3doc, n3rules, options);
       }
 
@@ -352,7 +352,7 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const options = { output: "derivations", blogic: false, outputType: "string" };
+          const options = { blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
@@ -388,7 +388,7 @@ export default {
           }
 
           // Apply schema alignment tasks.
-          const options = { output: "derivations", blogic: false, outputType: "string" };
+          const options = { blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
           const splitResult = this.splitReasoningResult(reasonerResult);
           prefixes = splitResult.prefixes;
