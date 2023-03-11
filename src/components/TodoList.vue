@@ -28,7 +28,7 @@
         <MDBCardText>
           <MDBInput label="Dataset URL" type="url" v-model="doc" />
           <small class="text-danger" v-if="docError">{{ docError }}</small>
-          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" style="margin-top: 1rem;" />
+          <MDBInput label="N3 Conversion Rules URL" type="url" v-model="rules" style="margin-top: 1rem" />
           <small style="margin-bottom: 1rem">Leave this URL empty to not apply any schema alignment tasks.</small>
           <small class="text-danger" v-if="rulesError">{{ rulesError }}</small>
         </MDBCardText>
@@ -341,8 +341,11 @@ export default {
     async toggleCompleted(event, todo) {
       if (todo.completedAt) {
         // Mark as not completed.
-        let prefixes = `@base <${this.doc}> .\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>`;
-        let triples = `<${todo.uri}> cal:completed "${todo.completedAt}" .`;
+        let prefixes = `BASE <${this.doc}>\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>\nPREFIX ex: <http://example.org/>`;
+        const triples = `<${todo.uri}> cal:completed "${todo.completedAt}" ; ex:event ex:MarkNotCompleted .`;
+
+        let insertTriples = "";
+        let deleteTriples = `<${todo.uri}> cal:completed ?completedAt .`;
 
         if (this.rules) {
           if (!this.invertedRules) {
@@ -354,31 +357,31 @@ export default {
           // Apply schema alignment tasks.
           const options = { blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
-          const splitResult = this.splitReasoningResult(reasonerResult);
-          prefixes = splitResult.prefixes;
-          triples = splitResult.triples;
+
+          // Parse policy to get insert and delete triples.
+          const policy = await this.parseToggleCompletedPolicy(reasonerResult);
+
+          insertTriples = policy.insertTriples
+            .map((t) => `${this.objectToString(t.s)} ${this.objectToString(t.p)} ${this.objectToString(t.o)} .`)
+            .join("\n");
+          deleteTriples = policy.deleteTriples
+            .map((t) => `${this.objectToString(t.s)} ${this.objectToString(t.p)} ${this.objectToString(t.o)} .`)
+            .join("\n");
         }
 
-        const query = `
-        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
-        DELETE DATA {
-          ${triples}
-        }`;
-
-        await this.engine.queryVoid(query, {
-          sources: [this.doc],
-          destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
-          baseIRI: this.doc,
-        });
+        // Update document.
+        await this.executePolicy(prefixes, insertTriples, deleteTriples);
 
         todo.completedAt = undefined;
       } else {
         // Mark as completed.
         const date = new Date().toISOString();
 
-        let prefixes = `@base <${this.doc}> .\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>`;
-        let triples = `<${todo.uri}> cal:completed "${date}" .`;
+        let prefixes = `BASE <${this.doc}>\nPREFIX cal: <http://www.w3.org/2002/12/cal/ical#>\nPREFIX ex: <http://example.org/>`;
+        const triples = `<${todo.uri}> cal:completed "${date}" ; ex:event ex:MarkCompleted .`;
+
+        let insertTriples = `<${todo.uri}> cal:completed "${date}" .`;
+        let deleteTriples = "";
 
         if (this.rules) {
           if (!this.invertedRules) {
@@ -390,23 +393,20 @@ export default {
           // Apply schema alignment tasks.
           const options = { blogic: false, outputType: "string" };
           const reasonerResult = await n3reasoner(`${prefixes}\n${triples}`, this.invertedRules, options);
-          const splitResult = this.splitReasoningResult(reasonerResult);
-          prefixes = splitResult.prefixes;
-          triples = splitResult.triples;
+
+          // Parse policy to get insert and delete triples.
+          const policy = await this.parseToggleCompletedPolicy(reasonerResult);
+
+          insertTriples = policy.insertTriples
+            .map((t) => `${this.objectToString(t.s)} ${this.objectToString(t.p)} ${this.objectToString(t.o)} .`)
+            .join("\n");
+          deleteTriples = policy.deleteTriples
+            .map((t) => `${this.objectToString(t.s)} ${this.objectToString(t.p)} ${this.objectToString(t.o)} .`)
+            .join("\n");
         }
 
-        const query = `
-        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
-        INSERT DATA {
-          ${triples}
-        }`;
-
-        await this.engine.queryVoid(query, {
-          sources: [this.doc],
-          destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
-          baseIRI: this.doc,
-        });
+        // Update document.
+        await this.executePolicy(prefixes, insertTriples, deleteTriples);
 
         todo.completedAt = date;
       }
@@ -429,6 +429,153 @@ export default {
       }).then((response) => response.text());
 
       this.error = "";
+    },
+    async parseToggleCompletedPolicy(doc) {
+      const queryInsertTriples = `
+      PREFIX ex: <http://example.org/>
+      PREFIX pol: <https://www.example.org/ns/policy#>
+      PREFIX fno: <https://w3id.org/function/ontology#>
+
+      SELECT ?s ?p ?o WHERE {
+        ?id pol:policy ?policy .
+        ?policy a fno:Execution .
+        ?policy fno:executes ex:updateResource .
+        ?policy ex:subject ?s .
+        ?policy ex:insertTriples ?t .
+        ?t ?p ?o .
+      }
+      `;
+      const bindingsInsertTriples = await (
+        await this.engine.queryBindings(queryInsertTriples, {
+          sources: [
+            {
+              type: "stringSource",
+              value: doc,
+              mediaType: "text/n3",
+              baseIRI: this.doc,
+            },
+          ],
+        })
+      ).toArray();
+
+      // Map to normal objects.
+      const insertTriples = bindingsInsertTriples.map((binding) => {
+        return {
+          s: binding.get("s"),
+          p: binding.get("p"),
+          o: binding.get("o"),
+        };
+      });
+
+      const queryDeleteTriples = `
+      PREFIX ex: <http://example.org/>
+      PREFIX pol: <https://www.example.org/ns/policy#>
+      PREFIX fno: <https://w3id.org/function/ontology#>
+
+      SELECT ?s ?p ?o WHERE {
+        ?id pol:policy ?policy .
+        ?policy a fno:Execution .
+        ?policy fno:executes ex:updateResource .
+        ?policy ex:subject ?s .
+        ?policy ex:deleteTriples ?t .
+        ?t ?p ?o .
+      }
+      `;
+
+      const bindingsDeleteTriples = await (
+        await this.engine.queryBindings(queryDeleteTriples, {
+          sources: [
+            {
+              type: "stringSource",
+              value: doc,
+              mediaType: "text/n3",
+              baseIRI: this.doc,
+            },
+          ],
+        })
+      ).toArray();
+
+      // Map to normal objects.
+      const deleteTriples = bindingsDeleteTriples.map((binding) => {
+        return {
+          s: binding.get("s"),
+          p: binding.get("p"),
+          o: binding.get("o"),
+        };
+      });
+
+      return {
+        insertTriples,
+        deleteTriples,
+      };
+    },
+    async executePolicy(prefixes, insertTriples, deleteTriples) {
+      // Delete triples if any.
+      if (deleteTriples) {
+        const query = `
+        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
+        DELETE DATA {
+          ${deleteTriples}
+        }`;
+
+        await this.engine.queryVoid(query, {
+          sources: [this.doc],
+          destination: { type: "patchSparqlUpdate", value: this.doc },
+          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
+          baseIRI: this.doc,
+        });
+      }
+
+      // Insert triples if any.
+      if (insertTriples) {
+        const query = `
+        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
+        INSERT DATA {
+          ${insertTriples}
+        }`;
+
+        await this.engine.queryVoid(query, {
+          sources: [this.doc],
+          destination: { type: "patchSparqlUpdate", value: this.doc },
+          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
+          baseIRI: this.doc,
+        });
+      }
+    },
+    objectToString(object) {
+      if (object.termType === "NamedNode") {
+        return `${this.sparqlEscapeUri(object.value)}`;
+      } else if (object.termType === "BlankNode") {
+        return `_:${object.value}`;
+      } else if (object.termType === "Literal") {
+        if ("dataType" in object) {
+          return `${this.sparqlEscapeString(object.value)}^^${this.sparqlEscapeUri(object.dataType.value)}`;
+        } else if ("datatype" in object) {
+          return `${this.sparqlEscapeString(object.value)}^^${this.sparqlEscapeUri(object.datatype.value)}`;
+        } else {
+          return `${this.sparqlEscapeString(object.value)}`;
+        }
+      } else {
+        throw new Error(`Unknown term type ${object.termType}`);
+      }
+    },
+    sparqlEscapeUri(value) {
+      return (
+        "<" +
+        value.replace(/[\\"<>]/g, function (match) {
+          return "\\" + match;
+        }) +
+        ">"
+      );
+    },
+    sparqlEscapeString(value) {
+      return (
+        '"""' +
+        value.replace(/[\\"]/g, function (match) {
+          return "\\" + match;
+        }) +
+        '"""'
+      );
     },
   },
 };
