@@ -437,12 +437,14 @@ export default {
       PREFIX fno: <https://w3id.org/function/ontology#>
 
       SELECT ?s ?p ?o WHERE {
-        ?id pol:policy ?policy .
-        ?policy a fno:Execution .
-        ?policy fno:executes ex:updateResource .
-        ?policy ex:subject ?s .
-        ?policy ex:insertTriples ?t .
-        ?t ?p ?o .
+        ?id pol:policy [
+          a fno:Execution ;
+          fno:executes ex:updateResource ;
+          ex:subject ?s ;
+          ex:insertTriples [
+            ?p ?o
+          ]
+        ] .
       }
       `;
       const bindingsInsertTriples = await (
@@ -473,12 +475,14 @@ export default {
       PREFIX fno: <https://w3id.org/function/ontology#>
 
       SELECT ?s ?p ?o WHERE {
-        ?id pol:policy ?policy .
-        ?policy a fno:Execution .
-        ?policy fno:executes ex:updateResource .
-        ?policy ex:subject ?s .
-        ?policy ex:deleteTriples ?t .
-        ?t ?p ?o .
+        ?id pol:policy [
+          a fno:Execution ;
+          fno:executes ex:updateResource ;
+          ex:subject ?s ;
+          ex:deleteTriples [
+            ?p ?o
+          ]
+        ] .
       }
       `;
 
