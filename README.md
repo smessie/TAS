@@ -33,6 +33,12 @@ This rules file is used to map changes back to the original vocabulary, e.g. whe
 The following two rules must be included in the inverted rules file to make this work:
 
 ```turtle
+@prefix ex: <http://example.org/> .
+@prefix cal: <http://www.w3.org/2002/12/cal/ical#>.
+@prefix ncal: <https://www.semanticdesktop.org/ontologies/2007/04/02/ncal/>.
+@prefix pol: <https://www.example.org/ns/policy#> .
+@prefix fno: <https://w3id.org/function/ontology#> .
+
 {
     ?id ex:event ex:MarkCompleted.
     ?id cal:completed ?completedAt.
