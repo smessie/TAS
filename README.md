@@ -43,34 +43,36 @@ The following two rules must be included in the inverted rules file to make this
     ?id ex:event ex:MarkCompleted.
     ?id cal:completed ?completedAt.
 } => {
-    ex:CompletedPolicy pol:policy ex:Pol .
-    ex:Pol
+    ex:CompletedPolicy pol:policy [
         a fno:Execution ;
         fno:executes ex:updateResource ;
-        ex:insertTriples ex:IT ;
-        ex:deleteTriples ex:DT ;
-        ex:subject ?id .
-    ex:IT
-         ncal:completed ?completedAt ;
-         ncal:todoStatus ncal:completedStatus .
-    ex:DT ncal:todoStatus ncal:inProcessStatus .
+        ex:insertTriples [
+            ncal:completed ?completedAt ;
+            ncal:todoStatus ncal:completedStatus
+        ] ;
+        ex:deleteTriples [
+            ncal:todoStatus ncal:inProcessStatus
+        ] ;
+        ex:subject ?id
+    ] .
 }.
 
 {
     ?id ex:event ex:MarkNotCompleted.
     ?id cal:completed ?completedAt.
 } => {
-    ex:NotCompletedPolicy pol:policy ex:Pol .
-    ex:Pol
+    ex:NotCompletedPolicy pol:policy [
         a fno:Execution ;
         fno:executes ex:updateResource ;
-        ex:insertTriples ex:IT ;
-        ex:deleteTriples ex:DT ;
-        ex:subject ?id .
-    ex:DT
-         ncal:completed ?completedAt ;
-         ncal:todoStatus ncal:completedStatus .
-    ex:IT ncal:todoStatus ncal:inProcessStatus .
+        ex:insertTriples [
+            ncal:todoStatus ncal:inProcessStatus
+        ] ;
+        ex:deleteTriples [
+            ncal:completed ?completedAt ;
+            ncal:todoStatus ncal:completedStatus
+        ] ;
+        ex:subject ?id
+    ] .
 }.
 ```
 The insertTriples and deleteTriples are used to define which triples should be added and which should be deleted.
