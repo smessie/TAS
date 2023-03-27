@@ -1,4 +1,14 @@
 <template>
+  <a href="https://github.com/smessie/TAS"
+  ><img
+      loading="lazy"
+      width="149"
+      height="149"
+      src="/forkme_right_gray.png"
+      class="attachment-full size-full fork"
+      alt="Fork me on GitHub"
+      data-recalc-dims="1"
+  /></a>
   <MDBContainer>
     <h1>👜 TAS - your Todo App with Solid</h1>
 
@@ -598,5 +608,10 @@ h1 {
 }
 .card {
   margin-bottom: 2rem;
+}
+
+.fork {
+  float: right;
+  margin-top: -3em;
 }
 </style>
