@@ -208,17 +208,19 @@ export default {
           triples = splitResult.triples;
         }
 
-        const query = `
-        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
-        INSERT DATA {
-          ${triples}
-        }`;
-
-        await this.engine.queryVoid(query, {
-          sources: [this.doc],
-          destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
-          baseIRI: this.doc,
+        await fetch(this.doc, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "text/n3",
+          },
+          body: `
+        ${prefixes}
+        @prefix solid: <http://www.w3.org/ns/solid/terms#>.
+        _:test a solid:InsertDeletePatch;
+          solid:inserts {
+            ${triples}
+          }.
+        `,
         });
 
         // Add to-do to list in app.
@@ -518,37 +520,34 @@ export default {
       };
     },
     async executePolicy(prefixes, insertTriples, deleteTriples) {
+      let query = `
+        ${prefixes}
+        @prefix solid: <http://www.w3.org/ns/solid/terms#>.
+        _:executePolicy a solid:InsertDeletePatch.`;
+
       // Delete triples if any.
       if (deleteTriples) {
-        const query = `
-        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
-        DELETE DATA {
+        query += `
+        _:executePolicy solid:deletes {
           ${deleteTriples}
-        }`;
-
-        await this.engine.queryVoid(query, {
-          sources: [this.doc],
-          destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
-          baseIRI: this.doc,
-        });
+        }.`;
       }
 
       // Insert triples if any.
       if (insertTriples) {
-        const query = `
-        ${prefixes.replaceAll("@prefix", "PREFIX").replace(/>[ \t\s]*\.[ \t\s]*/g, ">")}
-        INSERT DATA {
+        query += `
+        _:executePolicy solid:inserts {
           ${insertTriples}
-        }`;
-
-        await this.engine.queryVoid(query, {
-          sources: [this.doc],
-          destination: { type: "patchSparqlUpdate", value: this.doc },
-          "@comunica/actor-http-inrupt-solid-client-authn:session": getDefaultSession(),
-          baseIRI: this.doc,
-        });
+        }.`;
       }
+
+      await fetch(this.doc, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "text/n3",
+        },
+        body: query,
+      });
     },
     objectToString(object) {
       if (object.termType === "NamedNode") {
