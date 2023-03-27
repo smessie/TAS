@@ -130,7 +130,7 @@ import {
   MDBSwitch,
 } from "mdb-vue-ui-kit";
 import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from "@inrupt/solid-client-authn-browser";
-import { QueryEngine } from "@comunica/query-sparql-solid";
+import { QueryEngine } from "@comunica/query-sparql";
 import { v4 as uuidv4 } from "uuid";
 import { n3reasoner } from "eyereasoner";
 
@@ -431,6 +431,10 @@ export default {
       this.error = "";
     },
     async parseToggleCompletedPolicy(doc) {
+      // Add base to doc if not yet. Fixing relative IRIs.
+      if (!doc.includes("@base") && !doc.includes("BASE")) {
+        doc = `@base <${this.doc}> .\n${doc}`;
+      }
       const queryInsertTriples = `
       PREFIX ex: <http://example.org/>
       PREFIX pol: <https://www.example.org/ns/policy#>
