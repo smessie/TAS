@@ -1,6 +1,6 @@
 <template>
   <a href="https://github.com/smessie/TAS"
-  ><img
+    ><img
       loading="lazy"
       width="149"
       height="149"
@@ -143,6 +143,7 @@ import { getDefaultSession, handleIncomingRedirect, login, fetch, logout } from 
 import { QueryEngine } from "@comunica/query-sparql";
 import { v4 as uuidv4 } from "uuid";
 import { n3reasoner } from "eyereasoner";
+import { nextTick } from "vue";
 
 export default {
   name: "TodoList",
@@ -180,11 +181,47 @@ export default {
       rulesError: "",
     };
   },
-  created() {
+  async created() {
+    // Restore input data - Step 1
+    // 2 steps because `handleIncomingRedirect` triggers page reload resulting in loss of query data.
+    let watchCalls = 0;
+    this.$watch(
+      () => this.$route.query,
+      () => {
+        watchCalls++;
+        if (watchCalls === 2) {
+          // On second call, the query data contains the actual query parameters from the URL.
+          const query = this.$route.query;
+
+          // Only if the query contains no `code` parameter, we can proceed.
+          if (!("code" in query)) {
+            localStorage.setItem("query", JSON.stringify(query));
+          }
+        }
+      },
+      { immediate: true }
+    );
+
+    // Restore solid session
     handleIncomingRedirect({
       restorePreviousSession: true,
     }).then((info) => {
       this.loggedIn = info.webId;
+
+      // Restore input data - Step 2
+      const query = localStorage.getItem("query");
+      if (query) {
+        const parsedQuery = JSON.parse(query);
+        if (parsedQuery.doc) {
+          this.doc = parsedQuery.doc;
+        }
+        if (parsedQuery.rules) {
+          this.rules = parsedQuery.rules;
+        }
+        if (parsedQuery.invertedRulesUrl) {
+          this.invertedRulesUrl = parsedQuery.invertedRulesUrl;
+        }
+      }
     });
   },
   methods: {
@@ -264,6 +301,15 @@ export default {
     async logout() {
       await logout();
       this.loggedIn = undefined;
+    },
+    updateQueryParams() {
+      this.$router.push({
+        query: {
+          doc: this.doc,
+          rules: this.rules,
+          invertedRulesUrl: this.invertedRulesUrl,
+        },
+      });
     },
     async execute(event) {
       event.preventDefault();
@@ -593,6 +639,17 @@ export default {
         }) +
         '"""'
       );
+    },
+  },
+  watch: {
+    doc: function () {
+      this.updateQueryParams();
+    },
+    rules: function () {
+      this.updateQueryParams();
+    },
+    invertedRulesUrl: function () {
+      this.updateQueryParams();
     },
   },
 };
