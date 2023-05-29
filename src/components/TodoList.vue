@@ -196,6 +196,15 @@ export default {
           // Only if the query contains no `code` parameter, we can proceed.
           if (!("code" in query)) {
             localStorage.setItem("query", JSON.stringify(query));
+            if (query.doc) {
+              this.doc = query.doc;
+            }
+            if (query.rules) {
+              this.rules = query.rules;
+            }
+            if (query.invertedRulesUrl) {
+              this.invertedRulesUrl = query.invertedRulesUrl;
+            }
           }
         }
       },
@@ -209,17 +218,20 @@ export default {
       this.loggedIn = info.webId;
 
       // Restore input data - Step 2
-      const query = localStorage.getItem("query");
-      if (query) {
-        const parsedQuery = JSON.parse(query);
-        if (parsedQuery.doc) {
-          this.doc = parsedQuery.doc;
-        }
-        if (parsedQuery.rules) {
-          this.rules = parsedQuery.rules;
-        }
-        if (parsedQuery.invertedRulesUrl) {
-          this.invertedRulesUrl = parsedQuery.invertedRulesUrl;
+      // Only on loggedIn, otherwise this will be called before the query params are restored from the URL.
+      if (this.loggedIn) {
+        const query = localStorage.getItem("query");
+        if (query) {
+          const parsedQuery = JSON.parse(query);
+          if (parsedQuery.doc) {
+            this.doc = parsedQuery.doc;
+          }
+          if (parsedQuery.rules) {
+            this.rules = parsedQuery.rules;
+          }
+          if (parsedQuery.invertedRulesUrl) {
+            this.invertedRulesUrl = parsedQuery.invertedRulesUrl;
+          }
         }
       }
     });
